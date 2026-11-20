@@ -1,0 +1,16 @@
+id,stage,milestone,offset_days_from_distribution,done_when
+1,Planning,Funder and budget confirmed,-365,Funding source and amount signed off
+2,Planning,Provincial coordination committee set up,-335,Committee meets; terms of reference adopted
+3,Planning,Campaign plan of action and budget approved,-304,NMCP approval
+4,Procurement,Net quantity estimated,-274,Quantity agreed (population / 1.8)
+5,Procurement,Net order placed,-241,Purchase order issued
+6,Microplanning,Health-zone microplans finished,-182,Microplans approved for all health zones
+7,Logistics,Nets arrive in country / port cleared,-122,Cleared through customs
+8,Logistics,Nets delivered to health zones,-61,Delivered to 100% of health zones
+9,Training,Training cascade finished,-61,All trainings reported (province > zone > community)
+10,SBCC,SBCC and community mobilization launched,-42,Launch held; materials in place
+11,Registration,Household registration finished,-30,Registration data consolidated
+12,Distribution,Distribution starts,0,First nets handed out
+13,Distribution,Distribution and mop-up finished; final report,30,Coverage of registered households reported
+14,Post-campaign,Hang-up / use SBCC follow-up,61,Follow-up visits finished
+15,Post-campaign,First post-distribution monitoring round,274,Monitoring report

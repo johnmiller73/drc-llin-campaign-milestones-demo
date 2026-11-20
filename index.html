@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DRC GC8 LLIN Campaign Milestone Tracker (demonstration data)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --path-grey:#464F60; --path-red:#F65050; --ink:#464F60; --ink-muted:#6B7385;
+    --surface:#FFFFFF; --surface-soft:#EBEDEE; --line:#D5D8DD;
+    --done:#2E7D4F; --progress:#2F6FB0; --late:#D93A3A; --notstarted:#8A919C;
+    --font:"NB International Pro","Inter",Arial,Helvetica,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:var(--font);color:var(--ink);background:var(--surface);font-size:15px;line-height:1.45}
+  header{display:flex;align-items:center;gap:24px;padding:20px 40px;border-bottom:1px solid var(--line)}
+  header img{height:40px;width:auto}
+  header h1{font-size:24px;line-height:30px;margin:0;font-weight:700}
+  header p{margin:2px 0 0;color:var(--ink-muted);font-size:13px}
+  .demo{display:flex;gap:12px;align-items:center;background:var(--path-grey);color:#fff;padding:10px 40px;font-size:14px}
+  .demo strong{background:var(--path-red);color:#fff;padding:3px 10px;border-radius:4px;letter-spacing:.06em;font-size:12px;white-space:nowrap}
+  main{padding:24px 40px 48px;max-width:1440px}
+  .filters{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;margin-bottom:24px}
+  .filters label{display:flex;flex-direction:column;font-size:12px;color:var(--ink-muted);gap:4px}
+  select{font:inherit;font-size:14px;color:var(--ink);padding:7px 10px;border:1px solid #8A919C;border-radius:4px;background:#fff;min-width:190px}
+  button.reset{font:inherit;font-size:14px;padding:7px 14px;border:1px solid var(--path-grey);background:#fff;color:var(--ink);border-radius:4px;cursor:pointer}
+  button.reset:hover{background:var(--surface-soft)}
+  .asof{margin-left:auto;font-size:13px;color:var(--ink-muted)}
+  .kpis{display:grid;grid-template-columns:repeat(5,minmax(150px,1fr));gap:16px;margin-bottom:32px}
+  .kpi{background:var(--surface-soft);padding:16px}
+  .kpi .v{font-size:36px;line-height:42px;font-weight:700}
+  .kpi .l{font-size:13px}
+  .kpi .s{font-size:12px;color:var(--ink);opacity:.85}
+  .kpi.late .v{color:var(--late)}
+  section{margin-bottom:40px}
+  h2{font-size:18px;line-height:24px;margin:0 0 4px}
+  .sub{font-size:13px;color:var(--ink-muted);margin:0 0 12px}
+  .legend{display:flex;flex-wrap:wrap;gap:18px;font-size:13px;margin:0 0 8px}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .chart{position:relative;width:100%}
+  svg text{font-family:var(--font)}
+  .tip{position:fixed;pointer-events:none;background:#fff;border:1px solid var(--line);box-shadow:0 4px 14px rgba(70,79,96,.18);padding:10px 12px;font-size:13px;max-width:320px;display:none;z-index:10}
+  .tip b{display:block;margin-bottom:2px}
+  .tip .m{color:var(--ink-muted)}
+  table{border-collapse:collapse;width:100%;font-size:14px}
+  th{text-align:left;font-weight:600;background:var(--surface-soft);padding:8px 10px;position:sticky;top:0;cursor:pointer;white-space:nowrap}
+  th[aria-sort="ascending"]::after{content:" ▲";font-size:10px}
+  th[aria-sort="descending"]::after{content:" ▼";font-size:10px}
+  td{padding:7px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;white-space:nowrap;border:1px solid}
+  .pill.Done{color:#1F5C39;border-color:var(--done);background:#E6F2EA}
+  .pill.In{color:#1E4F82;border-color:var(--progress);background:#E7EFF8}
+  .pill.Late{color:#A12424;border-color:var(--late);background:#FCE9E9}
+  .pill.Not{color:var(--ink);border-color:var(--notstarted);background:#fff}
+  .tablewrap{max-height:520px;overflow:auto;border:1px solid var(--line)}
+  .ctx{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+  .card{border:1px solid var(--line);padding:12px 14px;font-size:13px}
+  .card h3{margin:0 0 2px;font-size:15px}
+  .card .r{color:var(--ink-muted);margin-bottom:6px}
+  .card dl{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin:0}
+  .card dt{color:var(--ink-muted)} .card dd{margin:0;font-variant-numeric:tabular-nums}
+  footer{border-top:1px solid var(--line);padding:16px 40px 32px;font-size:12px;color:var(--ink-muted)}
+  footer p{margin:4px 0}
+  @media (max-width:900px){header,main,footer,.demo{padding-left:16px;padding-right:16px}.kpis{grid-template-columns:repeat(2,1fr)}.asof{margin-left:0}}
+</style>
+</head>
+<body>
+<header>
+  <img src="assets/path-logo-primary-color.svg" alt="PATH">
+  <div>
+    <h1>DRC GC8 LLIN Campaign Milestone Tracker</h1>
+    <p>Planned milestones for the 11 provinces with GC8 mass ITN campaigns scheduled in 2027–2028 · MACEPA</p>
+  </div>
+</header>
+<div class="demo" role="note">
+  <strong>DEMONSTRATION DATA</strong>
+  <span>The milestone statuses on this page are made up to show how the tracker works. They do not report real campaign progress. Planned distribution dates come from the GC8 schedule; milestone dates are set from standard offsets and are not yet validated with the NMCP.</span>
+</div>
+
+<main>
+  <div class="filters">
+    <label>Region (pre-2015 province)
+      <select id="fRegion"></select></label>
+    <label>Province
+      <select id="fProvince"></select></label>
+    <label>Stage
+      <select id="fStage"></select></label>
+    <label>Status
+      <select id="fStatus"></select></label>
+    <button class="reset" id="reset" type="button">Clear filters</button>
+    <div class="asof">Status as of <b id="asofLabel"></b> (demo)</div>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <section>
+    <h2>Milestone timeline by province</h2>
+    <p class="sub">Each dot is a milestone; the diamond is the planned start of distribution. Provinces are ordered by planned distribution date. Hover for details.</p>
+    <div class="legend" id="legend"></div>
+    <div class="chart" id="timeline"></div>
+  </section>
+
+  <section>
+    <h2>Milestone status by province</h2>
+    <p class="sub">Count of milestones in each status.</p>
+    <div class="chart" id="bars"></div>
+  </section>
+
+  <section>
+    <h2>Province context</h2>
+    <p class="sub">From the DRC ITN campaign planning note (2025 Coverage Survey and GC8 schedule). RDT prevalence values are approximate.</p>
+    <div class="ctx" id="ctx"></div>
+  </section>
+
+  <section>
+    <h2>Milestone list</h2>
+    <p class="sub" id="tableCount"></p>
+    <div class="tablewrap"><table id="tbl"><thead></thead><tbody></tbody></table></div>
+  </section>
+</main>
+
+<footer>
+  <p><b>Sources:</b> DRC Malaria ITN Campaign Planning note V1 (NMCP documents, 2026–2030 National Strategic Plan, Mid-Term Review, GC7/GC8 campaign schedules); 2025 Coverage Survey, malaria component (Kinshasa School of Public Health).</p>
+  <p><b>Milestone timing:</b> offsets from the planned distribution date (D). The net order date uses the note's average of 241 days from order to distribution; other offsets are typical mass-campaign planning lead times.</p>
+  <p><b>Regions</b> group the 26 current provinces by the 11 provinces that existed before 2015.</p>
+  <p>DEMONSTRATION DATA: statuses are made up and do not reflect actual progress.</p>
+</footer>
+
+<div class="tip" id="tip"></div>
+
+<script>
+/* ============ DATA (edit here) ============ */
+const AS_OF = "2026-11-20";
+
+// Milestone template: offset in days from planned distribution start (D)
+const MILESTONES = [
+  {id:1, stage:"Planning",      name:"Funder and budget confirmed",                         offset:-365, done:"Funding source and amount signed off"},
+  {id:2, stage:"Planning",      name:"Provincial coordination committee set up",            offset:-335, done:"Committee meets; terms of reference adopted"},
+  {id:3, stage:"Planning",      name:"Campaign plan of action and budget approved",         offset:-304, done:"NMCP approval"},
+  {id:4, stage:"Procurement",   name:"Net quantity estimated",                              offset:-274, done:"Quantity agreed (population ÷ 1.8)"},
+  {id:5, stage:"Procurement",   name:"Net order placed",                                    offset:-241, done:"Purchase order issued"},
+  {id:6, stage:"Microplanning", name:"Health-zone microplans finished",                     offset:-182, done:"Microplans approved for all health zones"},
+  {id:7, stage:"Logistics",     name:"Nets arrive in country / port cleared",               offset:-122, done:"Cleared through customs"},
+  {id:8, stage:"Logistics",     name:"Nets delivered to health zones",                      offset:-61,  done:"Delivered to 100% of health zones"},
+  {id:9, stage:"Training",      name:"Training cascade finished",                           offset:-61,  done:"All trainings reported (province → zone → community)"},
+  {id:10,stage:"SBCC",          name:"SBCC and community mobilization launched",            offset:-42,  done:"Launch held; materials in place"},
+  {id:11,stage:"Registration",  name:"Household registration finished",                     offset:-30,  done:"Registration data consolidated"},
+  {id:12,stage:"Distribution",  name:"Distribution starts",                                 offset:0,    done:"First nets handed out"},
+  {id:13,stage:"Distribution",  name:"Distribution and mop-up finished; final report",      offset:30,   done:"Coverage of registered households reported"},
+  {id:14,stage:"Post-campaign", name:"Hang-up / use SBCC follow-up",                        offset:61,   done:"Follow-up visits finished"},
+  {id:15,stage:"Post-campaign", name:"First post-distribution monitoring round",            offset:274,  done:"Monitoring report"}
+];
+const STAGES = [...new Set(MILESTONES.map(m=>m.stage))];
+
+// GC8 provinces (from the planning note)
+const PROVINCES = [
+  {name:"Tshopo",        region:"Orientale",         dist:"2027-04-15", last:"2023-11-15", interval:41, access:35.5, owner:53.5, use:94.7, rdt:27,   cycle:24, assess:"Bring forward (by approx. 17 months)"},
+  {name:"Bas-Uélé",      region:"Orientale",         dist:"2027-10-01", last:"2024-08-27", interval:37, access:43.2, owner:63.4, use:84.4, rdt:52,   cycle:24, assess:"Bring forward (by approx. 13 months)"},
+  {name:"Kwango",        region:"Bandundu",          dist:"2027-10-31", last:"2025-03-28", interval:31, access:61.9, owner:82.1, use:85.7, rdt:17.5, cycle:30, assess:"Consistent with the rule"},
+  {name:"Maniema",       region:"Maniema",           dist:"2027-11-15", last:"2025-12-16", interval:22, access:61.9, owner:75.1, use:78.0, rdt:39,   cycle:24, assess:"Consistent with the rule"},
+  {name:"Équateur",      region:"Équateur",          dist:"2028-02-07", last:"2025-11-04", interval:27, access:77.2, owner:89.6, use:82.7, rdt:12.5, cycle:30, assess:"Consistent with the rule"},
+  {name:"Kasaï Central", region:"Kasaï-Occidental",  dist:"2028-02-29", last:"2025-08-30", interval:29, access:50.8, owner:67.3, use:69.8, rdt:25,   cycle:30, assess:"Consistent with the rule"},
+  {name:"Tshuapa",       region:"Équateur",          dist:"2028-03-08", last:"2025-12-27", interval:26, access:86.3, owner:91.4, use:51.8, rdt:27,   cycle:30, assess:"High ownership but use is 52%: prioritize SBCC"},
+  {name:"Kasaï",         region:"Kasaï-Occidental",  dist:"2028-07-29", last:"2026-05-02", interval:26, access:15.9, owner:24.5, use:76.4, rdt:34,   cycle:24, assess:"Consistent with the rule"},
+  {name:"Kongo Central", region:"Bas-Congo",         dist:"2028-08-07", last:"2026-09-30", interval:22, access:42.1, owner:64.7, use:93.4, rdt:18.5, cycle:30, assess:"Could be delayed (by approx. 8 months)"},
+  {name:"Maï-Ndombe",    region:"Bandundu",          dist:"2028-09-25", last:"2026-11-15", interval:22, access:34.6, owner:50.0, use:95.7, rdt:32.5, cycle:24, assess:"Consistent with the rule"},
+  {name:"Mongala",       region:"Équateur",          dist:"2028-12-03", last:"2026-08-18", interval:27, access:31.6, owner:48.3, use:96.3, rdt:23.5, cycle:24, assess:"Bring forward (by approx. 4 months)"}
+];
+
+// DEMONSTRATION statuses: overrides by "Province|milestone id"; the rest follow a simple rule (see demoStatus)
+const DEMO_LATE = new Set(["Tshopo|5","Tshopo|6","Tshopo|4","Bas-Uélé|1"]);
+/* ========================================== */
+
+const STATUS = [
+  {k:"Done",        cls:"Done", color:"var(--done)",       hex:"#2E7D4F", icon:"✓"},
+  {k:"In progress", cls:"In",   color:"var(--progress)",   hex:"#2F6FB0", icon:"◐"},
+  {k:"Late",        cls:"Late", color:"var(--late)",       hex:"#D93A3A", icon:"!"},
+  {k:"Not started", cls:"Not",  color:"var(--notstarted)", hex:"#8A919C", icon:"○"}
+];
+const S = Object.fromEntries(STATUS.map(s=>[s.k,s]));
+const DAY = 864e5;
+const asof = new Date(AS_OF+"T00:00:00");
+const fmt = d => d.toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"});
+const addDays = (iso,n) => new Date(new Date(iso+"T00:00:00").getTime()+n*DAY);
+
+function demoStatus(p,m,due){
+  const key=p.name+"|"+m.id;
+  if (DEMO_LATE.has(key)) return "Late";
+  const days=(due-asof)/DAY;
+  if (days < 0) return "Done";
+  if (days <= 60) return "In progress";
+  return "Not started";
+}
+
+const ROWS = [];
+PROVINCES.forEach(p=>MILESTONES.forEach(m=>{
+  const due=addDays(p.dist,m.offset);
+  ROWS.push({province:p.name, region:p.region, stage:m.stage, id:m.id, milestone:m.name, doneWhen:m.done, due, offset:m.offset, status:demoStatus(p,m,due)});
+}));
+
+// ---------- filters ----------
+const el=id=>document.getElementById(id);
+const regions=[...new Set(PROVINCES.map(p=>p.region))].sort((a,b)=>a.localeCompare(b));
+function fill(sel,opts,all){ sel.innerHTML=`<option value="">${all}</option>`+opts.map(o=>`<option>${o}</option>`).join(""); }
+fill(el("fRegion"),regions,"All regions");
+fill(el("fStage"),STAGES,"All stages");
+fill(el("fStatus"),STATUS.map(s=>s.k),"All statuses");
+function fillProvinces(){
+  const r=el("fRegion").value, cur=el("fProvince").value;
+  const ps=PROVINCES.filter(p=>!r||p.region===r).map(p=>p.name);
+  fill(el("fProvince"),ps,"All provinces");
+  if(ps.includes(cur)) el("fProvince").value=cur;
+}
+fillProvinces();
+el("fRegion").onchange=()=>{fillProvinces();render();};
+["fProvince","fStage","fStatus"].forEach(id=>el(id).onchange=render);
+el("reset").onclick=()=>{["fRegion","fStage","fStatus"].forEach(id=>el(id).value="");fillProvinces();el("fProvince").value="";render();};
+el("asofLabel").textContent=fmt(asof);
+
+function current(){
+  const r=el("fRegion").value,p=el("fProvince").value,s=el("fStage").value,st=el("fStatus").value;
+  const provs=PROVINCES.filter(x=>(!r||x.region===r)&&(!p||x.name===p));
+  const names=new Set(provs.map(x=>x.name));
+  const rows=ROWS.filter(x=>names.has(x.province)&&(!s||x.stage===s)&&(!st||x.status===st));
+  return {provs,rows};
+}
+
+// ---------- tooltip ----------
+const tip=el("tip");
+function showTip(e,html){tip.innerHTML=html;tip.style.display="block";moveTip(e);}
+function moveTip(e){const w=tip.offsetWidth,h=tip.offsetHeight;let x=e.clientX+14,y=e.clientY+14;if(x+w>innerWidth-8)x=e.clientX-w-14;if(y+h>innerHeight-8)y=e.clientY-h-14;tip.style.left=x+"px";tip.style.top=y+"px";}
+function hideTip(){tip.style.display="none";}
+const pill=s=>`<span class="pill ${S[s].cls}"><span aria-hidden="true">${S[s].icon}</span>${s}</span>`;
+
+// ---------- KPIs ----------
+function kpis(rows,provs){
+  const c=k=>rows.filter(r=>r.status===k).length;
+  const next90=rows.filter(r=>r.status!=="Done"&&r.due>=asof&&(r.due-asof)/DAY<=90).length;
+  const pct=rows.length?Math.round(c("Done")/rows.length*100):0;
+  el("kpis").innerHTML=[
+    ["Provinces in view",provs.length,`${new Set(provs.map(p=>p.region)).size} region(s)`],
+    ["Milestones",rows.length,"in current filter"],
+    ["Done",c("Done"),`${pct}% of milestones`],
+    ["Late",c("Late"),"past due, not done",true],
+    ["Due in next 90 days",next90,"not yet done"]
+  ].map(([l,v,s,late])=>`<div class="kpi${late?" late":""}"><div class="v">${v}</div><div class="l">${l}</div><div class="s">${s}</div></div>`).join("");
+}
+
+// ---------- legend ----------
+el("legend").innerHTML=STATUS.map(s=>`<span><svg width="14" height="14" aria-hidden="true">${s.k==="Not started"?`<circle cx="7" cy="7" r="5" fill="#fff" stroke="${s.hex}" stroke-width="2"/>`:`<circle cx="7" cy="7" r="6" fill="${s.hex}"/>`}</svg>${s.k}</span>`).join("")+
+ `<span><svg width="14" height="14" aria-hidden="true"><path d="M7 1 L13 7 L7 13 L1 7Z" fill="#464F60"/></svg>Planned distribution start</span>`+
+ `<span><svg width="14" height="14" aria-hidden="true"><line x1="7" y1="0" x2="7" y2="14" stroke="#F65050" stroke-width="2"/></svg>As of date</span>`;
+
+// ---------- timeline ----------
+const NS="http://www.w3.org/2000/svg";
+function svgEl(tag,attrs,parent){const n=document.createElementNS(NS,tag);for(const k in attrs)n.setAttribute(k,attrs[k]);if(parent)parent.appendChild(n);return n;}
+
+function timeline(provs,rows){
+  const box=el("timeline");box.innerHTML="";
+  if(!provs.length||!rows.length){box.innerHTML='<p class="sub">No milestones match the filters.</p>';return;}
+  const W=Math.max(box.clientWidth,700), L=130, R=20, T=28, rowH=34;
+  const H=T+provs.length*rowH+30;
+  const t0=new Date("2026-01-01"), t1=new Date("2029-10-01");
+  const x=d=>L+(d-t0)/(t1-t0)*(W-L-R);
+  const svg=svgEl("svg",{width:W,height:H,role:"img","aria-label":"Milestone timeline by province"},box);
+  // year/quarter grid
+  for(let y=2026;y<=2029;y++)for(let q=0;q<4;q++){
+    const d=new Date(y,q*3,1); if(d>t1)break; const xx=x(d);
+    svgEl("line",{x1:xx,x2:xx,y1:T-6,y2:H-26,stroke:q?"#EBEDEE":"#D5D8DD","stroke-width":1},svg);
+    if(!q){const t=svgEl("text",{x:xx+4,y:14,"font-size":12,fill:"#6B7385"},svg);t.textContent=y;}
+  }
+  provs.forEach((p,i)=>{
+    const cy=T+i*rowH+rowH/2;
+    if(i%2===0) svgEl("rect",{x:0,y:T+i*rowH,width:W,height:rowH,fill:"#F6F7F8"},svg).parentNode.insertBefore(svg.lastChild,svg.firstChild);
+    const lab=svgEl("text",{x:L-10,y:cy+4,"text-anchor":"end","font-size":13,fill:"#464F60"},svg);lab.textContent=p.name;
+    const pr=rows.filter(r=>r.province===p.name);
+    if(pr.length){const a=Math.min(...pr.map(r=>r.due)),b=Math.max(...pr.map(r=>r.due));
+      svgEl("line",{x1:x(a),x2:x(b),y1:cy,y2:cy,stroke:"#BFC4CB","stroke-width":2},svg);}
+    pr.filter(r=>r.id!==12).forEach(r=>{
+      const s=S[r.status];
+      const g=svgEl("g",{style:"cursor:default"},svg);
+      svgEl("circle",{cx:x(r.due),cy,r:12,fill:"transparent"},g); // hit target
+      if(r.status==="Not started") svgEl("circle",{cx:x(r.due),cy,r:5,fill:"#fff",stroke:s.hex,"stroke-width":2},g);
+      else svgEl("circle",{cx:x(r.due),cy,r:6,fill:s.hex,stroke:"#fff","stroke-width":2},g);
+      g.addEventListener("mousemove",e=>showTip(e,`<b>${r.milestone}</b><span class="m">${r.province} · ${r.stage}</span><br>Due ${fmt(r.due)} (D${r.offset>=0?"+":"−"}${Math.abs(r.offset)} days)<br>${pill(r.status)}`));
+      g.addEventListener("mouseleave",hideTip);
+    });
+    const dr=pr.find(r=>r.id===12);
+    if(dr){const dx=x(dr.due);const g=svgEl("g",{},svg);
+      svgEl("circle",{cx:dx,cy,r:12,fill:"transparent"},g);
+      svgEl("path",{d:`M${dx} ${cy-8} L${dx+8} ${cy} L${dx} ${cy+8} L${dx-8} ${cy}Z`,fill:"#464F60",stroke:"#fff","stroke-width":2},g);
+      g.addEventListener("mousemove",e=>showTip(e,`<b>Distribution starts: ${p.name}</b>Planned ${fmt(dr.due)}<br>Interval since last campaign: ${p.interval} months<br>${pill(dr.status)}`));
+      g.addEventListener("mouseleave",hideTip);}
+  });
+  const ax=x(asof);
+  svgEl("line",{x1:ax,x2:ax,y1:T-6,y2:H-22,stroke:"#F65050","stroke-width":2},svg);
+  const at=svgEl("text",{x:ax,y:H-6,"text-anchor":"middle","font-size":11,fill:"#464F60"},svg);at.textContent="As of "+fmt(asof);
+}
+
+// ---------- status bars ----------
+function bars(provs,rows){
+  const box=el("bars");box.innerHTML="";
+  if(!provs.length||!rows.length){box.innerHTML='<p class="sub">No milestones match the filters.</p>';return;}
+  const W=Math.max(box.clientWidth,600),L=130,R=40,rowH=26,T=6;
+  const H=T+provs.length*rowH+24;
+  const max=Math.max(...provs.map(p=>rows.filter(r=>r.province===p.name).length),1);
+  const x=n=>n/max*(W-L-R);
+  const svg=svgEl("svg",{width:W,height:H,role:"img","aria-label":"Milestone status counts by province"},box);
+  for(let t=0;t<=max;t+=Math.max(1,Math.ceil(max/5))){const xx=L+x(t);
+    svgEl("line",{x1:xx,x2:xx,y1:T,y2:H-20,stroke:"#EBEDEE"},svg);
+    const tt=svgEl("text",{x:xx,y:H-6,"text-anchor":"middle","font-size":11,fill:"#6B7385"},svg);tt.textContent=t;}
+  provs.forEach((p,i)=>{
+    const y=T+i*rowH+5,h=rowH-10;
+    const lab=svgEl("text",{x:L-10,y:y+h/2+4,"text-anchor":"end","font-size":13,fill:"#464F60"},svg);lab.textContent=p.name;
+    let acc=0; const pr=rows.filter(r=>r.province===p.name);
+    STATUS.forEach(s=>{const n=pr.filter(r=>r.status===s.k).length;if(!n)return;
+      const g=svgEl("g",{},svg);
+      const w=Math.max(x(n)-2,1);
+      if(s.k==="Not started") svgEl("rect",{x:L+x(acc)+1,y:y+1,width:Math.max(w-2,1),height:h-2,fill:"#fff",stroke:s.hex,"stroke-width":1.5},g);
+      else svgEl("rect",{x:L+x(acc),y,width:w,height:h,fill:s.hex},g);
+      g.addEventListener("mousemove",e=>showTip(e,`<b>${p.name}</b>${pill(s.k)} ${n} milestone${n>1?"s":""}`));
+      g.addEventListener("mouseleave",hideTip);
+      acc+=n;});
+    const tt=svgEl("text",{x:L+x(acc)+6,y:y+h/2+4,"font-size":12,fill:"#464F60"},svg);tt.textContent=pr.length;
+  });
+}
+
+// ---------- context cards ----------
+function ctx(provs){
+  el("ctx").innerHTML=provs.map(p=>`<div class="card"><h3>${p.name}</h3><div class="r">${p.region} region · distribution ${fmt(new Date(p.dist+"T00:00:00"))}</div>
+  <dl><dt>Last campaign</dt><dd>${fmt(new Date(p.last+"T00:00:00"))}</dd>
+  <dt>Interval</dt><dd>${p.interval} months (rule: ${p.cycle})</dd>
+  <dt>Ownership / access</dt><dd>${p.owner.toFixed(1)}% / ${p.access.toFixed(1)}%</dd>
+  <dt>ITNs used</dt><dd>${p.use.toFixed(1)}%</dd>
+  <dt>RDT prev. &lt;5</dt><dd>≈ ${p.rdt}%</dd>
+  <dt>Assessment</dt><dd>${p.assess}</dd></dl></div>`).join("");
+}
+
+// ---------- table ----------
+const COLS=[["province","Province"],["region","Region"],["stage","Stage"],["milestone","Milestone"],["due","Due date"],["days","Days from as-of"],["status","Status"],["doneWhen","Done when"]];
+let sortKey="due",sortDir=1;
+function table(rows){
+  const thead=el("tbl").tHead;
+  thead.innerHTML="<tr>"+COLS.map(([k,l])=>`<th data-k="${k}" ${k===sortKey?`aria-sort="${sortDir>0?"ascending":"descending"}"`:""}>${l}</th>`).join("")+"</tr>";
+  thead.querySelectorAll("th").forEach(th=>th.onclick=()=>{const k=th.dataset.k;if(k===sortKey)sortDir*=-1;else{sortKey=k;sortDir=1;}render();});
+  const val=(r,k)=>k==="days"?(r.due-asof):k==="due"?r.due.getTime():r[k];
+  const sorted=[...rows].sort((a,b)=>{const A=val(a,sortKey),B=val(b,sortKey);return (A<B?-1:A>B?1:0)*sortDir||a.due-b.due;});
+  el("tbl").tBodies[0].innerHTML=sorted.map(r=>{const d=Math.round((r.due-asof)/DAY);
+    return `<tr><td>${r.province}</td><td>${r.region}</td><td>${r.stage}</td><td>${r.milestone}</td><td class="num">${fmt(r.due)}</td><td class="num">${d>0?"+":""}${d}</td><td>${pill(r.status)}</td><td>${r.doneWhen}</td></tr>`;}).join("");
+  el("tableCount").textContent=`${rows.length} milestone${rows.length===1?"":"s"} in the current filter. Click a column heading to sort.`;
+}
+
+function render(){const {provs,rows}=current();kpis(rows,provs);timeline(provs,rows);bars(provs,rows);ctx(provs);table(rows);}
+render();
+let rt;addEventListener("resize",()=>{clearTimeout(rt);rt=setTimeout(render,150);});
+</script>
+</body>
+</html>
