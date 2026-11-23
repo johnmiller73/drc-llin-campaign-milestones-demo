@@ -6,6 +6,8 @@ A one-page dashboard showing planned milestones for the 11 DRC provinces with GC
 
 **View it:** open `index.html` in a browser, or use the GitHub Pages site for this repository.
 
+**Languages:** the page opens in French by default. Use the **FR | EN** switch at the top right to change language; the choice is remembered in that browser. You can also link straight to a language with `?lang=en` or `?lang=fr`. All page text is in the `T` block of `index.html` (French and English side by side), and milestone names in the `MILESTONES` block.
+
 ## What's in it
 - `index.html`: the dashboard. It's self-contained, and all data is in the `DATA` block at the top of the script.
 - `milestones_template.csv`: the 15 milestones and when each is due, counted in days before or after the planned distribution date.
