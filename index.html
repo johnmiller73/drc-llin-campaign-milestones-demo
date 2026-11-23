@@ -65,7 +65,9 @@
   .ctx{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
   .card{border:1px solid var(--line);padding:12px 14px;font-size:13px}
   .card h3{margin:0 0 2px;font-size:15px}
-  .card .r{color:var(--ink-muted);margin-bottom:6px}
+  .card .r{color:var(--ink-muted);margin-bottom:4px}
+  .card .upd{font-size:12px;margin-bottom:8px;padding:3px 8px;background:var(--surface-soft);display:inline-block}
+  .card .upd.stale{background:#FCE9E9;color:#A12424}
   .card dl{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin:0}
   .card dt{color:var(--ink-muted)} .card dd{margin:0;font-variant-numeric:tabular-nums}
   footer{border-top:1px solid var(--line);padding:16px 40px 32px;font-size:12px;color:var(--ink-muted)}
@@ -136,6 +138,7 @@
   <p data-i18n-html="footSources"></p>
   <p data-i18n-html="footTiming"></p>
   <p data-i18n-html="footRegions"></p>
+  <p id="footUpd"></p>
   <p id="footData"></p>
 </footer>
 
@@ -146,6 +149,7 @@
 const AS_OF = "2026-11-20";            // "as of" date for the demonstration data
 const DEFAULT_LANG = "fr";             // language shown on first visit
 const DATA_FILE = "data/milestone_status.csv";  // CSV exported from the milestone update sheet
+const STALE_DAYS = 30;                // a province update older than this is flagged
 
 // Milestone template: offset in days from planned distribution start (D). stage = internal key.
 const MILESTONES = [
@@ -195,6 +199,8 @@ const PROVINCES = [
 
 // DEMONSTRATION statuses: overrides by "Province|milestone id"; the rest follow a simple rule (see demoStatus)
 const DEMO_LATE = new Set(["Tshopo|4","Tshopo|5","Tshopo|6","Bas-Uélé|1"]);
+// DEMONSTRATION "last updated" dates per province (null = no update yet)
+const DEMO_UPDATED = {"Tshopo":"2026-11-18","Bas-Uélé":"2026-09-30","Kwango":"2026-11-12","Maniema":"2026-11-03","Équateur":"2026-10-28","Kasaï Central":"2026-11-16","Tshuapa":"2026-10-05","Kasaï":null,"Kongo Central":"2026-11-10","Maï-Ndombe":null,"Mongala":"2026-08-21"};
 /* ========================================== */
 
 /* ============ TEXT (French / English) ============ */
@@ -236,7 +242,10 @@ const T = {
     cRegion:(r,d)=>`Région ${r} · distribution le ${d}`,
     cLast:"Dernière campagne", cInterval:"Intervalle", cIntervalV:(n,c)=>`${n} mois (règle : ${c})`,
     cOwn:"Possession / accès", cUse:"MII utilisées", cRdt:"Prév. TDR &lt;5 ans", cAssess:"Appréciation",
-    cols:{province:"Province",region:"Région",stage:"Étape",milestone:"Jalon",due:"Échéance",days:"Jours (vs situation)",status:"Statut",actual:"Réalisé le",notes:"Notes",doneWhen:"Critère de réalisation"},
+    cols:{province:"Province",region:"Région",stage:"Étape",milestone:"Jalon",due:"Échéance",days:"Jours (vs situation)",status:"Statut",actual:"Réalisé le",notes:"Notes",updated:"Mis à jour le",doneWhen:"Critère de réalisation"},
+    upd:"Dernière mise à jour", updNone:"Aucune mise à jour", updAgo:n=>n===0?"aujourd’hui":`il y a ${n} j`,
+    updStale:n=>`plus de ${n} jours`, updShort:d=>`màj ${d}`, updShortNone:"pas de màj",
+    footUpd:n=>`<b>Dernière mise à jour</b> d’une province : date la plus récente de la colonne « Last updated » de la feuille pour ses jalons. Signalée en rouge si elle date de plus de ${n} jours ou s’il n’y en a pas.`,
     count:n=>`${n} jalon${n>1?"s":""} selon les filtres. Cliquez sur un en-tête de colonne pour trier.`,
     footSources:"<b>Sources :</b> Note de planification des campagnes de MII en RDC, V1 (documents du PNLP, Plan stratégique national 2026–2030, revue à mi-parcours, calendriers des campagnes GC7/GC8) ; Enquête de couverture 2025, volet paludisme (École de santé publique de Kinshasa).",
     footTiming:"<b>Calendrier des jalons :</b> délais calculés à partir de la date de distribution prévue (J). La date de commande des moustiquaires reprend le délai moyen de 241 jours entre la commande et la distribution indiqué dans la note ; les autres délais correspondent aux délais habituels de planification des campagnes de masse.",
@@ -279,7 +288,10 @@ const T = {
     cRegion:(r,d)=>`${r} region · distribution ${d}`,
     cLast:"Last campaign", cInterval:"Interval", cIntervalV:(n,c)=>`${n} months (rule: ${c})`,
     cOwn:"Ownership / access", cUse:"ITNs used", cRdt:"RDT prev. &lt;5", cAssess:"Assessment",
-    cols:{province:"Province",region:"Region",stage:"Stage",milestone:"Milestone",due:"Due date",days:"Days from as-of",status:"Status",actual:"Completed",notes:"Notes",doneWhen:"Done when"},
+    cols:{province:"Province",region:"Region",stage:"Stage",milestone:"Milestone",due:"Due date",days:"Days from as-of",status:"Status",actual:"Completed",notes:"Notes",updated:"Updated",doneWhen:"Done when"},
+    upd:"Last update", updNone:"No update yet", updAgo:n=>n===0?"today":`${n} day${n>1?"s":""} ago`,
+    updStale:n=>`over ${n} days`, updShort:d=>`upd. ${d}`, updShortNone:"no update",
+    footUpd:n=>`<b>Last update</b> for a province is the most recent date in the sheet's "Last updated" column across its milestones. It is shown in red when it is more than ${n} days old or missing.`,
     count:n=>`${n} milestone${n===1?"":"s"} in the current filter. Click a column heading to sort.`,
     footSources:"<b>Sources:</b> DRC Malaria ITN Campaign Planning note V1 (NMCP documents, 2026–2030 National Strategic Plan, Mid-Term Review, GC7/GC8 campaign schedules); 2025 Coverage Survey, malaria component (Kinshasa School of Public Health).",
     footTiming:"<b>Milestone timing:</b> offsets from the planned distribution date (D). The net order date uses the note's average of 241 days from order to distribution; other offsets are typical mass-campaign planning lead times.",
@@ -331,7 +343,9 @@ function buildDemo(){
   ROWS=[];
   PROVINCES.forEach(p=>MILESTONES.forEach(m=>{
     const due=addDays(p.dist,m.offset);
-    ROWS.push({province:p.name, region:p.region, stage:m.stage, id:m.id, due, offset:m.offset, status:demoStatus(p,m,due), actual:null, notes:""});
+    const u=DEMO_UPDATED[p.name];
+    ROWS.push({province:p.name, region:p.region, stage:m.stage, id:m.id, due, offset:m.offset, status:demoStatus(p,m,due), actual:null, notes:"",
+      updated: u && (m.id<=6 || due<=asof) ? new Date(u+"T00:00:00") : null});
   }));
 }
 
@@ -376,7 +390,7 @@ function rowsFromCSV(text){
     if(st!=="Done"&&due<today) st="Late";
     out.push({province:prov, region:get(r,"Region")||(p?p.region:""), stage:m.stage||get(r,"Stage"), id, rawName:get(r,"Milestone"),
       due, offset:p?Math.round((due-new Date(p.dist+"T00:00:00"))/DAY):m.offset, status:st,
-      actual:parseDate(get(r,"Actual completion date")), notes:get(r,"Notes")});
+      actual:parseDate(get(r,"Actual completion date")), notes:get(r,"Notes"), updated:parseDate(get(r,"Last updated"))});
   });
   if(!out.length) throw new Error("no rows");
   out.filter(r=>r.id===12).forEach(r=>{const p=PROVINCES.find(x=>x.name===r.province);
@@ -387,6 +401,14 @@ function rowsFromCSV(text){
   PROVINCES.sort((a,b)=>(a.dist?new Date(a.dist):a._due)-(b.dist?new Date(b.dist):b._due));
   return out;
 }
+
+// latest "Last updated" date among a province's milestones (all rows, not just the filtered ones)
+function provUpdate(name){
+  let d=null; ROWS.forEach(r=>{ if(r.province===name&&r.updated&&(!d||r.updated>d)) d=r.updated; }); return d;
+}
+const ageDays=d=>Math.max(0,Math.round((asof-d)/DAY));
+const isStale=d=>!d||ageDays(d)>STALE_DAYS;
+const fmtShort=d=>d.toLocaleDateString(loc(),{day:"numeric",month:"short"});
 
 // ---------- page text ----------
 const el=id=>document.getElementById(id);
@@ -401,6 +423,7 @@ function applyStatic(){
   el("bannerTag").textContent=real?t("realTag"):t("demoTag");
   el("bannerText").innerHTML=real?t("realText")(DATA_FILE,META?fmt(META):""):t("demoText");
   el("footData").textContent=real?t("footReal"):t("footDemo");
+  el("footUpd").innerHTML=t("footUpd")(STALE_DAYS);
   el("asofLabel").textContent=fmt(asof);
   el("asofNote").textContent=real?"":t("demoNote");
   el("legend").innerHTML=STATUS.map(s=>`<span><svg width="14" height="14" aria-hidden="true">${s.k==="Not started"?`<circle cx="7" cy="7" r="5" fill="#fff" stroke="${s.hex}" stroke-width="2"/>`:`<circle cx="7" cy="7" r="6" fill="${s.hex}"/>`}</svg>${t(s.lk)}</span>`).join("")+
@@ -463,7 +486,7 @@ function svgEl(tag,attrs,parent){const n=document.createElementNS(NS,tag);for(co
 function timeline(provs,rows){
   const box=el("timeline");box.innerHTML="";
   if(!provs.length||!rows.length){box.innerHTML=`<p class="sub">${t("none")}</p>`;return;}
-  const W=Math.max(box.clientWidth,700), L=130, R=20, T0=28, rowH=34;
+  const W=Math.max(box.clientWidth,700), L=150, R=20, T0=28, rowH=38;
   const H=T0+provs.length*rowH+30;
   const t0=new Date("2026-01-01"), t1=new Date("2029-10-01");
   const x=d=>L+(d-t0)/(t1-t0)*(W-L-R);
@@ -476,7 +499,13 @@ function timeline(provs,rows){
   provs.forEach((p,i)=>{
     const cy=T0+i*rowH+rowH/2;
     if(i%2===0) svg.insertBefore(svgEl("rect",{x:0,y:T0+i*rowH,width:W,height:rowH,fill:"#F6F7F8"}),svg.firstChild);
-    const lab=svgEl("text",{x:L-10,y:cy+4,"text-anchor":"end","font-size":13,fill:"#464F60"},svg);lab.textContent=p.name;
+    const lab=svgEl("text",{x:L-10,y:cy-2,"text-anchor":"end","font-size":13,fill:"#464F60"},svg);lab.textContent=p.name;
+    const u=provUpdate(p.name), st=isStale(u);
+    const ul=svgEl("text",{x:L-10,y:cy+12,"text-anchor":"end","font-size":11,fill:st?"#A12424":"#6B7385"},svg);
+    ul.textContent=(st?"! ":"")+(u?t("updShort")(fmtShort(u)):t("updShortNone"));
+    const ug=svgEl("rect",{x:0,y:cy-rowH/2,width:L-4,height:rowH,fill:"transparent"},svg);
+    ug.addEventListener("mousemove",e=>showTip(e,`<b>${p.name}</b>${t("upd")} : ${u?`${fmt(u)} (${t("updAgo")(ageDays(u))})`:t("updNone")}${st&&u?`<br><span style="color:#A12424">! ${t("updStale")(STALE_DAYS)}</span>`:""}`.replace(" : ",LANG==="fr"?" : ":": ")));
+    ug.addEventListener("mouseleave",hideTip);
     const pr=rows.filter(r=>r.province===p.name);
     if(pr.length){const a=Math.min(...pr.map(r=>r.due)),b=Math.max(...pr.map(r=>r.due));
       svgEl("line",{x1:x(a),x2:x(b),y1:cy,y2:cy,stroke:"#BFC4CB","stroke-width":2},svg);}
@@ -530,8 +559,12 @@ function bars(provs,rows){
 }
 
 // ---------- context cards ----------
+function updLine(name){
+  const u=provUpdate(name), st=isStale(u);
+  return `<div class="upd${st?" stale":""}">${st?"! ":""}${t("upd")}${LANG==="fr"?" : ":": "}<b>${u?fmt(u):t("updNone")}</b>${u?` · ${t("updAgo")(ageDays(u))}`:""}</div>`;
+}
 function ctx(provs){
-  el("ctx").innerHTML=provs.filter(p=>p.dist&&p.last).map(p=>`<div class="card"><h3>${p.name}</h3><div class="r">${t("cRegion")(p.region,fmt(new Date(p.dist+"T00:00:00")))}</div>
+  el("ctx").innerHTML=provs.filter(p=>p.dist&&p.last).map(p=>`<div class="card"><h3>${p.name}</h3><div class="r">${t("cRegion")(p.region,fmt(new Date(p.dist+"T00:00:00")))}</div>${updLine(p.name)}
   <dl><dt>${t("cLast")}</dt><dd>${fmt(new Date(p.last+"T00:00:00"))}</dd>
   <dt>${t("cInterval")}</dt><dd>${t("cIntervalV")(p.interval,p.cycle)}</dd>
   <dt>${t("cOwn")}</dt><dd>${pct(p.owner)} / ${pct(p.access)}</dd>
@@ -541,17 +574,17 @@ function ctx(provs){
 }
 
 // ---------- table ----------
-const COLS=["province","region","stage","milestone","due","days","status","actual","notes","doneWhen"];
+const COLS=["province","region","stage","milestone","due","days","status","actual","notes","updated","doneWhen"];
 let sortKey="due",sortDir=1;
 function table(rows){
   const thead=el("tbl").tHead, L=t("cols");
   thead.innerHTML="<tr>"+COLS.map(k=>`<th data-k="${k}" ${k===sortKey?`aria-sort="${sortDir>0?"ascending":"descending"}"`:""}>${L[k]}</th>`).join("")+"</tr>";
   thead.querySelectorAll("th").forEach(th=>th.onclick=()=>{const k=th.dataset.k;if(k===sortKey)sortDir*=-1;else{sortKey=k;sortDir=1;}render();});
-  const val=(r,k)=>k==="days"?(r.due-asof):k==="due"?r.due.getTime():k==="actual"?(r.actual?r.actual.getTime():0):
+  const val=(r,k)=>k==="days"?(r.due-asof):k==="due"?r.due.getTime():k==="actual"?(r.actual?r.actual.getTime():0):k==="updated"?(r.updated?r.updated.getTime():0):
     k==="milestone"?msName(r):k==="stage"?stageLabel(r.stage):k==="doneWhen"?msDone(r):k==="status"?t(S[r.status].lk):r[k];
   const sorted=[...rows].sort((a,b)=>{const A=val(a,sortKey),B=val(b,sortKey);return (typeof A==="string"?A.localeCompare(B,loc()):(A<B?-1:A>B?1:0))*sortDir||a.due-b.due;});
   el("tbl").tBodies[0].innerHTML=sorted.map(r=>{const d=Math.round((r.due-asof)/DAY);
-    return `<tr><td>${r.province}</td><td>${r.region}</td><td>${stageLabel(r.stage)}</td><td>${esc(msName(r))}</td><td class="num">${fmt(r.due)}</td><td class="num">${d>0?"+":""}${d}</td><td>${pill(r.status)}</td><td class="num">${r.actual?fmt(r.actual):""}</td><td>${esc(r.notes||"")}</td><td>${msDone(r)}</td></tr>`;}).join("");
+    return `<tr><td>${r.province}</td><td>${r.region}</td><td>${stageLabel(r.stage)}</td><td>${esc(msName(r))}</td><td class="num">${fmt(r.due)}</td><td class="num">${d>0?"+":""}${d}</td><td>${pill(r.status)}</td><td class="num">${r.actual?fmt(r.actual):""}</td><td>${esc(r.notes||"")}</td><td class="num">${r.updated?fmt(r.updated):""}</td><td>${msDone(r)}</td></tr>`;}).join("");
   el("tableCount").textContent=t("count")(rows.length);
 }
 
