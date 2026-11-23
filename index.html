@@ -75,7 +75,7 @@
     <p>Planned milestones for the 11 provinces with GC8 mass ITN campaigns scheduled in 2027–2028 · MACEPA</p>
   </div>
 </header>
-<div class="demo" role="note">
+<div class="demo" role="note" id="demoBanner">
   <strong>DEMONSTRATION DATA</strong>
   <span>The milestone statuses on this page are made up to show how the tracker works. They do not report real campaign progress. Planned distribution dates come from the GC8 schedule; milestone dates are set from standard offsets and are not yet validated with the NMCP.</span>
 </div>
@@ -91,7 +91,7 @@
     <label>Status
       <select id="fStatus"></select></label>
     <button class="reset" id="reset" type="button">Clear filters</button>
-    <div class="asof">Status as of <b id="asofLabel"></b> (demo)</div>
+    <div class="asof">Status as of <b id="asofLabel"></b> <span id="asofNote">(demo)</span></div>
   </div>
 
   <div class="kpis" id="kpis"></div>
@@ -126,7 +126,7 @@
   <p><b>Sources:</b> DRC Malaria ITN Campaign Planning note V1 (NMCP documents, 2026–2030 National Strategic Plan, Mid-Term Review, GC7/GC8 campaign schedules); 2025 Coverage Survey, malaria component (Kinshasa School of Public Health).</p>
   <p><b>Milestone timing:</b> offsets from the planned distribution date (D). The net order date uses the note's average of 241 days from order to distribution; other offsets are typical mass-campaign planning lead times.</p>
   <p><b>Regions</b> group the 26 current provinces by the 11 provinces that existed before 2015.</p>
-  <p>DEMONSTRATION DATA: statuses are made up and do not reflect actual progress.</p>
+  <p id="footDemo">DEMONSTRATION DATA: statuses are made up and do not reflect actual progress.</p>
 </footer>
 
 <div class="tip" id="tip"></div>
@@ -182,7 +182,7 @@ const STATUS = [
 ];
 const S = Object.fromEntries(STATUS.map(s=>[s.k,s]));
 const DAY = 864e5;
-const asof = new Date(AS_OF+"T00:00:00");
+let asof = new Date(AS_OF+"T00:00:00");
 const fmt = d => d.toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"});
 const addDays = (iso,n) => new Date(new Date(iso+"T00:00:00").getTime()+n*DAY);
 
@@ -195,30 +195,90 @@ function demoStatus(p,m,due){
   return "Not started";
 }
 
-const ROWS = [];
-PROVINCES.forEach(p=>MILESTONES.forEach(m=>{
-  const due=addDays(p.dist,m.offset);
-  ROWS.push({province:p.name, region:p.region, stage:m.stage, id:m.id, milestone:m.name, doneWhen:m.done, due, offset:m.offset, status:demoStatus(p,m,due)});
-}));
+let ROWS = [];
+let SOURCE = "demo";
+function buildDemo(){
+  ROWS=[];
+  PROVINCES.forEach(p=>MILESTONES.forEach(m=>{
+    const due=addDays(p.dist,m.offset);
+    ROWS.push({province:p.name, region:p.region, stage:m.stage, id:m.id, milestone:m.name, doneWhen:m.done, due, offset:m.offset, status:demoStatus(p,m,due), actual:null, notes:""});
+  }));
+}
+
+// ---------- real data: data/milestone_status.csv (exported from the update sheet) ----------
+const DATA_FILE = "data/milestone_status.csv";
+function parseCSV(text){
+  const out=[];let row=[],f="",q=false;
+  text=text.replace(/^\uFEFF/,"");
+  for(let i=0;i<text.length;i++){const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){f+='"';i++;} else q=false; } else f+=c; }
+    else if(c==='"') q=true;
+    else if(c===','){row.push(f);f="";}
+    else if(c==='\n'||c==='\r'){ if(c==='\r'&&text[i+1]==='\n')i++; row.push(f);f=""; if(row.some(v=>v.trim()!==""))out.push(row); row=[]; }
+    else f+=c;}
+  row.push(f); if(row.some(v=>v.trim()!==""))out.push(row);
+  return out;
+}
+const MONTHS={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,sept:8,oct:9,nov:10,dec:11};
+function parseDate(v){
+  v=(v||"").trim(); if(!v) return null;
+  let m=v.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); if(m) return new Date(+m[1],m[2]-1,+m[3]);
+  m=v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); if(m) return new Date(+m[3],m[1]-1,+m[2]);   // m/d/yyyy (US export)
+  m=v.match(/^(\d{1,2})[ -]([A-Za-z]{3,4})[a-z]*[ -](\d{4})$/); if(m&&MONTHS[m[2].toLowerCase()]!=null) return new Date(+m[3],MONTHS[m[2].toLowerCase()],+m[1]);
+  if(/^\d{5}(\.\d+)?$/.test(v)) return new Date(Math.round((+v-25569)*DAY)+new Date().getTimezoneOffset()*6e4); // spreadsheet serial
+  const d=new Date(v); return isNaN(d)?null:d;
+}
+function rowsFromCSV(text){
+  const t=parseCSV(text); if(t.length<2) throw new Error("empty");
+  const h=t[0].map(x=>x.trim().toLowerCase());
+  const col=n=>h.indexOf(n.toLowerCase());
+  const need=["Province","Milestone ID","Status"]; need.forEach(n=>{if(col(n)<0) throw new Error("missing column "+n);});
+  const get=(r,n)=>{const i=col(n);return i<0?"":(r[i]||"").trim();};
+  const today=new Date(); today.setHours(0,0,0,0); asof=today;
+  const out=[];
+  t.slice(1).forEach(r=>{
+    const prov=get(r,"Province"), id=parseInt(get(r,"Milestone ID"),10); if(!prov||!id) return;
+    const m=MILESTONES.find(x=>x.id===id)||{id,stage:"",name:"Milestone "+id,offset:0,done:""};
+    const p=PROVINCES.find(x=>x.name===prov);
+    let due=parseDate(get(r,"Planned due date"));
+    if(!due&&p) due=addDays(p.dist,m.offset);
+    if(!due) return;
+    let st=get(r,"Status"); if(!["Done","In progress","Not started"].includes(st)) st="Not started";
+    if(st!=="Done"&&due<today) st="Late";
+    out.push({province:prov, region:get(r,"Region")||(p?p.region:""), stage:get(r,"Stage")||m.stage, id, milestone:get(r,"Milestone")||m.name,
+      doneWhen:m.done, due, offset:p?Math.round((due-new Date(p.dist+"T00:00:00"))/DAY):m.offset, status:st,
+      actual:parseDate(get(r,"Actual completion date")), notes:get(r,"Notes")});
+  });
+  if(!out.length) throw new Error("no rows");
+  // planned distribution dates and regions follow the sheet
+  out.filter(r=>r.id===12).forEach(r=>{const p=PROVINCES.find(x=>x.name===r.province);
+    if(p) p.dist=`${r.due.getFullYear()}-${String(r.due.getMonth()+1).padStart(2,"0")}-${String(r.due.getDate()).padStart(2,"0")}`;});
+  [...new Set(out.map(r=>r.province))].forEach(n=>{ if(!PROVINCES.find(p=>p.name===n)){const r=out.find(x=>x.province===n&&x.id===12)||out.find(x=>x.province===n);
+    PROVINCES.push({name:n,region:r.region,dist:null,_due:r.due});}});
+  out.forEach(r=>{const p=PROVINCES.find(x=>x.name===r.province); if(p&&r.region) p.region=r.region;});
+  PROVINCES.sort((a,b)=>(a.dist?new Date(a.dist):a._due)-(b.dist?new Date(b.dist):b._due));
+  return out;
+}
 
 // ---------- filters ----------
 const el=id=>document.getElementById(id);
-const regions=[...new Set(PROVINCES.map(p=>p.region))].sort((a,b)=>a.localeCompare(b));
 function fill(sel,opts,all){ sel.innerHTML=`<option value="">${all}</option>`+opts.map(o=>`<option>${o}</option>`).join(""); }
-fill(el("fRegion"),regions,"All regions");
-fill(el("fStage"),STAGES,"All stages");
-fill(el("fStatus"),STATUS.map(s=>s.k),"All statuses");
+function initFilters(){
+  const regions=[...new Set(PROVINCES.map(p=>p.region))].sort((a,b)=>a.localeCompare(b));
+  fill(el("fRegion"),regions,"All regions");
+  fill(el("fStage"),[...new Set(ROWS.map(r=>r.stage))],"All stages");
+  fill(el("fStatus"),STATUS.map(s=>s.k),"All statuses");
+  fillProvinces();
+}
 function fillProvinces(){
   const r=el("fRegion").value, cur=el("fProvince").value;
   const ps=PROVINCES.filter(p=>!r||p.region===r).map(p=>p.name);
   fill(el("fProvince"),ps,"All provinces");
   if(ps.includes(cur)) el("fProvince").value=cur;
 }
-fillProvinces();
 el("fRegion").onchange=()=>{fillProvinces();render();};
 ["fProvince","fStage","fStatus"].forEach(id=>el(id).onchange=render);
 el("reset").onclick=()=>{["fRegion","fStage","fStatus"].forEach(id=>el(id).value="");fillProvinces();el("fProvince").value="";render();};
-el("asofLabel").textContent=fmt(asof);
 
 function current(){
   const r=el("fRegion").value,p=el("fProvince").value,s=el("fStage").value,st=el("fStatus").value;
@@ -233,6 +293,7 @@ const tip=el("tip");
 function showTip(e,html){tip.innerHTML=html;tip.style.display="block";moveTip(e);}
 function moveTip(e){const w=tip.offsetWidth,h=tip.offsetHeight;let x=e.clientX+14,y=e.clientY+14;if(x+w>innerWidth-8)x=e.clientX-w-14;if(y+h>innerHeight-8)y=e.clientY-h-14;tip.style.left=x+"px";tip.style.top=y+"px";}
 function hideTip(){tip.style.display="none";}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const pill=s=>`<span class="pill ${S[s].cls}"><span aria-hidden="true">${S[s].icon}</span>${s}</span>`;
 
 // ---------- KPIs ----------
@@ -285,14 +346,14 @@ function timeline(provs,rows){
       svgEl("circle",{cx:x(r.due),cy,r:12,fill:"transparent"},g); // hit target
       if(r.status==="Not started") svgEl("circle",{cx:x(r.due),cy,r:5,fill:"#fff",stroke:s.hex,"stroke-width":2},g);
       else svgEl("circle",{cx:x(r.due),cy,r:6,fill:s.hex,stroke:"#fff","stroke-width":2},g);
-      g.addEventListener("mousemove",e=>showTip(e,`<b>${r.milestone}</b><span class="m">${r.province} · ${r.stage}</span><br>Due ${fmt(r.due)} (D${r.offset>=0?"+":"−"}${Math.abs(r.offset)} days)<br>${pill(r.status)}`));
+      g.addEventListener("mousemove",e=>showTip(e,`<b>${r.milestone}</b><span class="m">${r.province} · ${r.stage}</span><br>Due ${fmt(r.due)} (D${r.offset>=0?"+":"−"}${Math.abs(r.offset)} days)<br>${pill(r.status)}${r.actual?`<br>Completed ${fmt(r.actual)}`:""}${r.notes?`<br><span class="m">${esc(r.notes)}</span>`:""}`));
       g.addEventListener("mouseleave",hideTip);
     });
     const dr=pr.find(r=>r.id===12);
     if(dr){const dx=x(dr.due);const g=svgEl("g",{},svg);
       svgEl("circle",{cx:dx,cy,r:12,fill:"transparent"},g);
       svgEl("path",{d:`M${dx} ${cy-8} L${dx+8} ${cy} L${dx} ${cy+8} L${dx-8} ${cy}Z`,fill:"#464F60",stroke:"#fff","stroke-width":2},g);
-      g.addEventListener("mousemove",e=>showTip(e,`<b>Distribution starts: ${p.name}</b>Planned ${fmt(dr.due)}<br>Interval since last campaign: ${p.interval} months<br>${pill(dr.status)}`));
+      g.addEventListener("mousemove",e=>showTip(e,`<b>Distribution starts: ${p.name}</b>Planned ${fmt(dr.due)}<br>${p.interval?`Interval since last campaign: ${p.interval} months<br>`:""}${pill(dr.status)}`));
       g.addEventListener("mouseleave",hideTip);}
   });
   const ax=x(asof);
@@ -330,7 +391,7 @@ function bars(provs,rows){
 
 // ---------- context cards ----------
 function ctx(provs){
-  el("ctx").innerHTML=provs.map(p=>`<div class="card"><h3>${p.name}</h3><div class="r">${p.region} region · distribution ${fmt(new Date(p.dist+"T00:00:00"))}</div>
+  el("ctx").innerHTML=provs.filter(p=>p.dist&&p.last).map(p=>`<div class="card"><h3>${p.name}</h3><div class="r">${p.region} region · distribution ${fmt(new Date(p.dist+"T00:00:00"))}</div>
   <dl><dt>Last campaign</dt><dd>${fmt(new Date(p.last+"T00:00:00"))}</dd>
   <dt>Interval</dt><dd>${p.interval} months (rule: ${p.cycle})</dd>
   <dt>Ownership / access</dt><dd>${p.owner.toFixed(1)}% / ${p.access.toFixed(1)}%</dd>
@@ -340,21 +401,38 @@ function ctx(provs){
 }
 
 // ---------- table ----------
-const COLS=[["province","Province"],["region","Region"],["stage","Stage"],["milestone","Milestone"],["due","Due date"],["days","Days from as-of"],["status","Status"],["doneWhen","Done when"]];
+const COLS=[["province","Province"],["region","Region"],["stage","Stage"],["milestone","Milestone"],["due","Due date"],["days","Days from as-of"],["status","Status"],["actual","Completed"],["notes","Notes"],["doneWhen","Done when"]];
 let sortKey="due",sortDir=1;
 function table(rows){
   const thead=el("tbl").tHead;
   thead.innerHTML="<tr>"+COLS.map(([k,l])=>`<th data-k="${k}" ${k===sortKey?`aria-sort="${sortDir>0?"ascending":"descending"}"`:""}>${l}</th>`).join("")+"</tr>";
   thead.querySelectorAll("th").forEach(th=>th.onclick=()=>{const k=th.dataset.k;if(k===sortKey)sortDir*=-1;else{sortKey=k;sortDir=1;}render();});
-  const val=(r,k)=>k==="days"?(r.due-asof):k==="due"?r.due.getTime():r[k];
+  const val=(r,k)=>k==="days"?(r.due-asof):k==="due"?r.due.getTime():k==="actual"?(r.actual?r.actual.getTime():0):r[k];
   const sorted=[...rows].sort((a,b)=>{const A=val(a,sortKey),B=val(b,sortKey);return (A<B?-1:A>B?1:0)*sortDir||a.due-b.due;});
   el("tbl").tBodies[0].innerHTML=sorted.map(r=>{const d=Math.round((r.due-asof)/DAY);
-    return `<tr><td>${r.province}</td><td>${r.region}</td><td>${r.stage}</td><td>${r.milestone}</td><td class="num">${fmt(r.due)}</td><td class="num">${d>0?"+":""}${d}</td><td>${pill(r.status)}</td><td>${r.doneWhen}</td></tr>`;}).join("");
+    return `<tr><td>${r.province}</td><td>${r.region}</td><td>${r.stage}</td><td>${r.milestone}</td><td class="num">${fmt(r.due)}</td><td class="num">${d>0?"+":""}${d}</td><td>${pill(r.status)}</td><td class="num">${r.actual?fmt(r.actual):""}</td><td>${esc(r.notes||"")}</td><td>${r.doneWhen}</td></tr>`;}).join("");
   el("tableCount").textContent=`${rows.length} milestone${rows.length===1?"":"s"} in the current filter. Click a column heading to sort.`;
 }
 
 function render(){const {provs,rows}=current();kpis(rows,provs);timeline(provs,rows);bars(provs,rows);ctx(provs);table(rows);}
-render();
+
+function setSource(meta){
+  if(SOURCE==="sheet"){
+    el("demoBanner").innerHTML=`<strong style="background:#fff;color:#464F60">PROGRESS DATA</strong><span>Statuses come from the milestone update sheet (<code>${DATA_FILE}</code>${meta?", file updated "+meta:""}). Late = past its planned date and not marked Done.</span>`;
+    el("footDemo").textContent="Statuses come from the milestone update sheet. Late is worked out from the planned due date and today's date.";
+    el("asofLabel").textContent=fmt(asof); el("asofNote").textContent="";
+  } else { el("asofLabel").textContent=fmt(asof); }
+}
+(async function init(){
+  let meta="";
+  try{
+    const res=await fetch(DATA_FILE,{cache:"no-store"});
+    if(!res.ok) throw new Error(res.status);
+    const lm=res.headers.get("Last-Modified"); if(lm) meta=fmt(new Date(lm));
+    ROWS=rowsFromCSV(await res.text()); SOURCE="sheet";
+  }catch(e){ buildDemo(); SOURCE="demo"; }
+  setSource(meta); initFilters(); render();
+})();
 let rt;addEventListener("resize",()=>{clearTimeout(rt);rt=setTimeout(render,150);});
 </script>
 </body>

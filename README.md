@@ -11,10 +11,16 @@ A one-page dashboard showing planned milestones for the 11 DRC provinces with GC
 - `milestones_template.csv`: the 15 milestones and when each is due, counted in days before or after the planned distribution date.
 - `assets/path-logo-primary-color.svg`: PATH logo.
 
+## Updating with real progress data
+1. Fill in the **DRC GC8 LLIN Milestone Update Sheet**: set Status (Not started / In progress / Done) and the actual completion date for each milestone. Planned due dates are worked out from the distribution dates on its Provinces tab and the offsets on its Milestones tab.
+2. Open the sheet's **Milestone status** tab and download it as CSV.
+3. Rename the file to `milestone_status.csv` and upload it to the `data/` folder of this repo (Add file → Upload files), replacing any old copy.
+4. The dashboard reads it automatically. A milestone is shown as **Late** when its planned date has passed and it isn't marked Done. While `data/milestone_status.csv` is missing, the dashboard shows demonstration data.
+
 ## Data and assumptions
 - Planned distribution dates, last campaign dates and province indicators come from the *DRC Malaria ITN Campaign Planning* note V1 (GC8 schedule; 2025 Coverage Survey, Kinshasa School of Public Health). RDT prevalence values are approximate.
 - Milestone due dates = planned distribution date + offset. The net order offset (−241 days) is the note's average time from order to distribution. The other offsets are typical planning lead times for mass campaigns and still need to be checked with the NMCP.
 - Regions group the current provinces by the provinces that existed before 2015 (Orientale, Bandundu, Équateur, Kasaï-Occidental, Bas-Congo, Maniema).
-- Statuses are generated for the demo, with 20 Nov 2026 as the "as of" date. To use real data, replace `demoStatus()` with actual statuses.
+- Without `data/milestone_status.csv`, statuses are generated for the demo, with 20 Nov 2026 as the "as of" date.
 
 PATH / MACEPA
