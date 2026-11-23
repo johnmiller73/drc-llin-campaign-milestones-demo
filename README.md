@@ -12,7 +12,7 @@ A one-page dashboard showing planned milestones for the 11 DRC provinces with GC
 - `index.html`: the dashboard. It's self-contained, and all data is in the `DATA` block at the top of the script.
 - `milestones_template.csv`: the 15 milestones and when each is due, counted in days before or after the planned distribution date.
 - `assets/path-logo-primary-color.svg`: PATH logo.
-- `assets/drc_regions.js`: simplified boundaries of the 11 pre-2015 provinces (the dashboard's regions), from Natural Earth admin-1 (public domain). Used for the region map; hover a region for its provinces' progress, click to filter.
+- `assets/drc_map.js`: simplified boundaries of the 26 provinces and of the 11 pre-2015 provinces (the dashboard's regions). © OpenStreetMap contributors / OSM-RDC ([opendatalabrdc/OSM_Exports](https://github.com/opendatalabrdc/OSM_Exports), 2019 extract), ODbL 1.0. Hover a province for its progress; click a GC8 province to filter.
 
 ## Updating with real progress data
 1. Fill in the **DRC GC8 LLIN Milestone Update Sheet**: set Status (Not started / In progress / Done) and the actual completion date for each milestone. Planned due dates are worked out from the distribution dates on its Provinces tab and the offsets on its Milestones tab.

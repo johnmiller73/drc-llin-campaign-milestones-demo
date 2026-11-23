@@ -70,7 +70,7 @@
   .card .upd.stale{background:#FCE9E9;color:#A12424}
   .card dl{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin:0}
   .card dt{color:var(--ink-muted)} .card dd{margin:0;font-variant-numeric:tabular-nums}
-  .maprow{display:grid;grid-template-columns:minmax(300px,600px) minmax(280px,1fr);gap:24px;align-items:start}
+  .maprow{display:grid;grid-template-columns:minmax(300px,640px) minmax(280px,1fr);gap:24px;align-items:start}
   #map svg path.rg{cursor:pointer;transition:opacity .15s}
   #map svg path.rg:focus{outline:none}
   #map svg text{pointer-events:none;font-weight:600}
@@ -82,6 +82,7 @@
   .mappanel .pv b{font-size:14px}
   .mappanel .row{display:flex;flex-wrap:wrap;gap:4px 12px;color:var(--ink)}
   .mappanel .stale{color:#A12424}
+  .mappanel .others{margin-top:10px;padding-top:8px;border-top:2px solid var(--line);font-size:12px;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.04em}
   .mappanel .act{margin-top:8px;color:var(--ink-muted);font-size:12px}
   .mlegend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;margin:8px 0 0}
   .mlegend span{display:inline-flex;align-items:center;gap:6px}
@@ -169,7 +170,7 @@
 </footer>
 
 <div class="tip" id="tip"></div>
-<script src="assets/drc_regions.js"></script>
+<script src="assets/drc_map.js"></script>
 
 <script>
 /* ============ DATA (edit here) ============ */
@@ -276,11 +277,14 @@ const T = {
     count:n=>`${n} jalon${n>1?"s":""} selon les filtres. Cliquez sur un en-tête de colonne pour trier.`,
     footSources:"<b>Sources :</b> Note de planification des campagnes de MII en RDC, V1 (documents du PNLP, Plan stratégique national 2026–2030, revue à mi-parcours, calendriers des campagnes GC7/GC8) ; Enquête de couverture 2025, volet paludisme (École de santé publique de Kinshasa).",
     footTiming:"<b>Calendrier des jalons :</b> délais calculés à partir de la date de distribution prévue (J). La date de commande des moustiquaires reprend le délai moyen de 241 jours entre la commande et la distribution indiqué dans la note ; les autres délais correspondent aux délais habituels de planification des campagnes de masse.",
-    footRegions:"<b>Les régions</b> regroupent les 26 provinces actuelles selon les 11 provinces existant avant 2015. Limites de la carte : Natural Earth (domaine public), simplifiées ; à titre indicatif.",
-    hMap:"Carte des régions",
-    subMap:"Survolez une région pour voir l’avancement de ses provinces ; cliquez pour filtrer le tableau de bord. La couleur indique le statut le plus critique des jalons de la région, selon les filtres choisis.",
-    ariaMap:"Carte des régions de la RDC",
-    mapHint:"Survolez ou sélectionnez une région sur la carte pour afficher le détail de ses provinces.",
+    footRegions:"<b>Les régions</b> regroupent les 26 provinces actuelles selon les 11 provinces existant avant 2015. Limites de la carte : © contributeurs OpenStreetMap / OSM-RDC (licence ODbL), simplifiées ; à titre indicatif.",
+    hMap:"Carte des provinces",
+    subMap:"Survolez une province pour voir son avancement ; cliquez sur une province GC8 pour filtrer le tableau de bord. La couleur indique le statut le plus critique de ses jalons, selon les filtres choisis. Les traits épais délimitent les régions.",
+    ariaMap:"Carte des provinces de la RDC",
+    mapHint:"Survolez ou sélectionnez une province sur la carte pour afficher son détail.",
+    mRegion:r=>`Région ${r}`, mRegionSel:"Région sélectionnée", mOthers:"Autres provinces GC8 de la région", mRegLine:"Limite de région",
+    noGC8p:"Aucune campagne GC8 n’est prévue en 2027–2028 dans cette province.",
+    clickFilterP:"Cliquez sur la province pour filtrer le tableau de bord.",
     mLate:"Au moins un jalon en retard", mProg:"En cours, sans retard", mDone:"Tous les jalons réalisés", mNot:"Pas encore démarré", mNone:"Pas de campagne GC8", mOut:"Hors filtre",
     noGC8:"Aucune campagne GC8 n’est prévue en 2027–2028 dans cette région.",
     outFilter:"Aucun jalon de cette région ne correspond aux filtres actuels.",
@@ -332,11 +336,14 @@ const T = {
     count:n=>`${n} milestone${n===1?"":"s"} in the current filter. Click a column heading to sort.`,
     footSources:"<b>Sources:</b> DRC Malaria ITN Campaign Planning note V1 (NMCP documents, 2026–2030 National Strategic Plan, Mid-Term Review, GC7/GC8 campaign schedules); 2025 Coverage Survey, malaria component (Kinshasa School of Public Health).",
     footTiming:"<b>Milestone timing:</b> offsets from the planned distribution date (D). The net order date uses the note's average of 241 days from order to distribution; other offsets are typical mass-campaign planning lead times.",
-    footRegions:"<b>Regions</b> group the 26 current provinces by the 11 provinces that existed before 2015. Map boundaries: Natural Earth (public domain), simplified; for illustration only.",
-    hMap:"Map of regions",
-    subMap:"Hover over a region to see progress in its provinces; click to filter the dashboard. Colour shows the most critical milestone status in the region, for the current filters.",
-    ariaMap:"Map of DRC regions",
-    mapHint:"Hover over or select a region on the map to see its provinces.",
+    footRegions:"<b>Regions</b> group the 26 current provinces by the 11 provinces that existed before 2015. Map boundaries: © OpenStreetMap contributors / OSM-RDC (ODbL licence), simplified; for illustration only.",
+    hMap:"Map of provinces",
+    subMap:"Hover over a province to see its progress; click a GC8 province to filter the dashboard. Colour shows the most critical milestone status, for the current filters. Thick lines mark the regions.",
+    ariaMap:"Map of DRC provinces",
+    mapHint:"Hover over or select a province on the map to see its details.",
+    mRegion:r=>`${r} region`, mRegionSel:"Selected region", mOthers:"Other GC8 provinces in the region", mRegLine:"Region boundary",
+    noGC8p:"No GC8 campaign is planned in this province for 2027–2028.",
+    clickFilterP:"Click the province to filter the dashboard.",
     mLate:"At least one milestone late", mProg:"In progress, none late", mDone:"All milestones done", mNot:"Not started yet", mNone:"No GC8 campaign", mOut:"Outside filter",
     noGC8:"No GC8 campaign is planned in this region for 2027–2028.",
     outFilter:"No milestones in this region match the current filters.",
@@ -606,78 +613,89 @@ function bars(provs,rows){
   });
 }
 
-// ---------- region map ----------
+// ---------- province map ----------
 const MAPC={Late:"#D93A3A","In progress":"#2F6FB0",Done:"#2E7D4F","Not started":"#AEB4BE",none:"#ECEEF0",out:"#F6F7F8"};
 const MAPLBL={Late:"mLate","In progress":"mProg",Done:"mDone","Not started":"mNot",none:"mNone",out:"mOut"};
-let mapHover=null;
-function regionState(name,rows){
-  if(!PROVINCES.some(p=>p.region===name)) return "none";
-  const rr=rows.filter(r=>r.region===name); if(!rr.length) return "out";
+const isGC8=name=>PROVINCES.some(p=>p.name===name&&(p.dist||p._due));
+function stateOf(rr){
+  if(!rr.length) return "out";
   if(rr.some(r=>r.status==="Late")) return "Late";
-  if(rr.some(r=>r.status==="In progress")) return "In progress";
+  if(rr.some(r=>r.status==="In progress")||(rr.some(r=>r.status==="Done")&&!rr.every(r=>r.status==="Done"))) return "In progress";
   if(rr.every(r=>r.status==="Done")) return "Done";
-  if(rr.some(r=>r.status==="Done")) return "In progress";
   return "Not started";
 }
-function regionPanel(name,rows){
+const provState=(name,rows)=>isGC8(name)?stateOf(rows.filter(r=>r.province===name)):"none";
+const swatch=st=>`<i style="display:inline-block;width:10px;height:10px;background:${MAPC[st]};border:1px solid rgba(70,79,96,.25);margin-right:6px;vertical-align:-1px"></i>`;
+function provBlock(p,rows,big){
   const sep=LANG==="fr"?" : ":": ";
-  if(!name) return `<p class="hint">${t("mapHint")}</p>`;
-  const st=regionState(name,rows);
-  let h=`<h3>${name}</h3><div class="row" style="margin-bottom:8px"><span><i style="display:inline-block;width:10px;height:10px;background:${MAPC[st]};margin-right:6px"></i>${t(MAPLBL[st])}</span></div>`;
-  const provs=PROVINCES.filter(p=>p.region===name);
-  if(!provs.length) return h+`<p class="hint">${t("noGC8")}</p>`;
-  if(st==="out") h+=`<p class="hint">${t("outFilter")}</p>`;
-  provs.forEach(p=>{
-    const pr=rows.filter(r=>r.province===p.name), all=ROWS.filter(r=>r.province===p.name);
-    const done=pr.filter(r=>r.status==="Done").length, late=pr.filter(r=>r.status==="Late").length;
-    const next=all.filter(r=>r.status!=="Done").sort((a,b)=>a.due-b.due)[0];
-    const u=provUpdate(p.name), stale=isStale(u);
-    const dist=all.find(r=>r.id===12);
-    h+=`<div class="pv"><b>${p.name}</b>
-      <div class="row">${dist?`<span>${t("pDist")(fmt(dist.due))}</span>`:""}<span>${t("pDone")(done,pr.length)}</span>${late?`<span class="stale">! ${t("pLate")(late)}</span>`:""}</div>
-      <div class="row">${next?t("pNext")(esc(msName(next)),fmt(next.due)):t("pAllDone")}</div>
-      <div class="row${stale?" stale":""}">${stale?"! ":""}${t("upd")}${sep}${u?`${fmt(u)} (${t("updAgo")(ageDays(u))})`:t("updNone")}</div></div>`;
-  });
-  const sel=el("fRegion").value===name;
-  return h+`<p class="act">${sel?t("clickClear"):t("clickFilter")}</p>`;
+  const pr=rows.filter(r=>r.province===p.name), all=ROWS.filter(r=>r.province===p.name);
+  const done=pr.filter(r=>r.status==="Done").length, late=pr.filter(r=>r.status==="Late").length;
+  const next=all.filter(r=>r.status!=="Done").sort((a,b)=>a.due-b.due)[0];
+  const u=provUpdate(p.name), stale=isStale(u), dist=all.find(r=>r.id===12), st=stateOf(pr);
+  return `<div class="pv">${big?"":`<b>${swatch(st)}${p.name}</b>`}
+    <div class="row">${dist?`<span>${t("pDist")(fmt(dist.due))}</span>`:""}<span>${t("pDone")(done,pr.length)}</span>${late?`<span class="stale">! ${t("pLate")(late)}</span>`:""}</div>
+    <div class="row">${next?t("pNext")(esc(msName(next)),fmt(next.due)):t("pAllDone")}</div>
+    <div class="row${stale?" stale":""}">${stale?"! ":""}${t("upd")}${sep}${u?`${fmt(u)} (${t("updAgo")(ageDays(u))})`:t("updNone")}</div></div>`;
+}
+function provincePanel(name,rows){
+  const M=window.DRC_MAP, region=(M.provinces[name]||{}).region||"";
+  const st=provState(name,rows);
+  let h=`<h3>${name}</h3><div class="row" style="color:var(--ink-muted)">${t("mRegion")(region)}</div><div class="row" style="margin:6px 0 4px">${swatch(st)}${t(MAPLBL[st])}</div>`;
+  if(st==="none") h+=`<p class="hint">${t("noGC8p")}</p>`;
+  else { const p=PROVINCES.find(x=>x.name===name); if(st==="out") h+=`<p class="hint">${t("outFilter")}</p>`; h+=provBlock(p,rows,true); }
+  const others=PROVINCES.filter(p=>p.region===region&&p.name!==name);
+  if(others.length) h+=`<div class="others">${t("mOthers")}</div>`+others.map(p=>provBlock(p,rows,false)).join("");
+  if(st!=="none") h+=`<p class="act">${el("fProvince").value===name?t("clickClear"):t("clickFilterP")}</p>`;
+  return h;
+}
+function regionPanel(region,rows){
+  const provs=PROVINCES.filter(p=>p.region===region);
+  return `<h3>${region}</h3><div class="row" style="margin:2px 0 4px;color:var(--ink-muted)">${t("mRegionSel")}</div>`+provs.map(p=>provBlock(p,rows,false)).join("");
+}
+function defaultPanel(rows){
+  const pv=el("fProvince").value, rg=el("fRegion").value;
+  if(pv) return provincePanel(pv,rows);
+  if(rg) return regionPanel(rg,rows);
+  return `<p class="hint">${t("mapHint")}</p>`;
 }
 function drawMap(rows){
   const box=el("map"); box.innerHTML="";
-  if(!window.DRC_REGIONS){ box.innerHTML=""; return; }
-  const G=window.DRC_REGIONS, [x0,y0,x1,y1]=G.bounds;
-  const W=Math.min(Math.max(box.clientWidth,300),600), pad=6;
+  const M=window.DRC_MAP; if(!M) return;
+  const [x0,y0,x1,y1]=M.bounds;
+  const W=Math.min(Math.max(box.clientWidth,300),640), pad=6;
   const k=(W-2*pad)/(x1-x0), H=Math.round((y1-y0)*k+2*pad);
   const px=([lon,lat])=>[pad+(lon-x0)*k, pad+(y1-lat)*k];
+  const dOf=rings=>rings.map(r=>"M"+r.map(c=>px(c).map(v=>v.toFixed(1)).join(",")).join("L")+"Z").join("");
   const svg=svgEl("svg",{width:W,height:H,role:"img","aria-label":t("ariaMap")},box);
-  const selR=el("fRegion").value;
-  const names=Object.keys(G.regions);
-  const base=svgEl("g",{},svg), selg=svgEl("g",{"pointer-events":"none"},svg), ov=svgEl("g",{"pointer-events":"none"},svg);
-  names.forEach(n=>{
-    const g=G.regions[n], st=regionState(n,rows);
-    const d=g.rings.map(r=>"M"+r.map(c=>px(c).map(v=>v.toFixed(1)).join(",")).join("L")+"Z").join("");
-    const path=svgEl("path",{d,fill:MAPC[st],stroke:"#fff","stroke-width":1.5,"stroke-linejoin":"round",class:"rg"+(selR===n?" sel":""),tabindex:0,
-      "aria-label":`${n}: ${t(MAPLBL[st])}`},base);
-    if(selR===n) svgEl("path",{d,fill:"none",stroke:"#464F60","stroke-width":3,"stroke-linejoin":"round"},selg);
-    if(selR&&selR!==n) path.style.opacity=.45;
-    const show=()=>{mapHover=n; ov.innerHTML=""; svgEl("path",{d,fill:"none",stroke:"#464F60","stroke-width":2.5,"stroke-linejoin":"round"},ov); el("mapPanel").innerHTML=regionPanel(n,rows);};
-    const hide=()=>{mapHover=null; ov.innerHTML=""; el("mapPanel").innerHTML=regionPanel(selR||null,rows);};
+  const base=svgEl("g",{},svg), regs=svgEl("g",{"pointer-events":"none"},svg), selg=svgEl("g",{"pointer-events":"none"},svg),
+        ov=svgEl("g",{"pointer-events":"none"},svg), lg=svgEl("g",{"pointer-events":"none"},svg);
+  const selP=el("fProvince").value, selR=el("fRegion").value;
+  Object.entries(M.provinces).forEach(([n,g])=>{
+    const st=provState(n,rows), d=dOf(g.rings);
+    const path=svgEl("path",{d,fill:MAPC[st],stroke:"#fff","stroke-width":0.8,"stroke-linejoin":"round","fill-rule":"evenodd",class:"rg",tabindex:0,
+      "aria-label":`${n} (${g.region}): ${t(MAPLBL[st])}`},base);
+    if((selP&&selP!==n)||(!selP&&selR&&g.region!==selR)) path.style.opacity=.4;
+    if(selP===n) svgEl("path",{d,fill:"none",stroke:"#464F60","stroke-width":3,"stroke-linejoin":"round"},selg);
+    const show=()=>{ov.innerHTML="";svgEl("path",{d,fill:"none",stroke:"#464F60","stroke-width":2.5,"stroke-linejoin":"round"},ov);el("mapPanel").innerHTML=provincePanel(n,rows);};
+    const hide=()=>{ov.innerHTML="";el("mapPanel").innerHTML=defaultPanel(rows);};
     path.addEventListener("mouseenter",show); path.addEventListener("focus",show);
     path.addEventListener("mouseleave",hide); path.addEventListener("blur",hide);
-    const pick=()=>{ if(!PROVINCES.some(p=>p.region===n)) return;
-      el("fRegion").value = el("fRegion").value===n ? "" : n; el("fProvince").value=""; fillProvinces(); render(); };
+    const pick=()=>{ if(!isGC8(n)) return;
+      if(el("fProvince").value===n){ el("fProvince").value=""; }
+      else { el("fRegion").value=g.region; fillProvinces(); el("fProvince").value=n; }
+      render(); };
     path.addEventListener("click",pick);
     path.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();pick();}});
+    if(isGC8(n)){ const [lx,ly]=px(g.label), dark=["Late","In progress","Done"].includes(st);
+      const tx=svgEl("text",{x:lx,y:ly+3.5,"text-anchor":"middle","font-size":10,fill:dark?"#fff":"#464F60"},lg);
+      tx.textContent=n; }
   });
-  const lg=svgEl("g",{},svg);
-  function labels(){
-    names.forEach(n=>{const g=G.regions[n],[lx,ly]=px(g.label), st=regionState(n,rows);
-      const dark=["Late","In progress","Done"].includes(st);
-      const tx=svgEl("text",{x:lx,y:ly+4,"text-anchor":"middle","font-size":n==="Kinshasa"?9:11,fill:dark?"#fff":"#464F60"},lg);
-      tx.textContent=n==="Kasaï-Occidental"?"Kasaï-Occ.":n==="Kasaï-Oriental"?"Kasaï-Or.":n;});
-  }
-  labels();
-  el("mapPanel").innerHTML=regionPanel(selR||null,rows);
-  el("mapLegend").innerHTML=["Late","In progress","Done","Not started","none"].map(k=>`<span><i style="background:${MAPC[k]}"></i>${t(MAPLBL[k])}</span>`).join("");
+  Object.entries(M.regions).forEach(([r,g])=>{
+    svgEl("path",{d:dOf(g.rings),fill:"none",stroke:"#464F60","stroke-width":selR===r&&!selP?3:1.8,"stroke-linejoin":"round","stroke-opacity":selR===r&&!selP?1:.85},regs);
+  });
+  el("mapPanel").innerHTML=defaultPanel(rows);
+  el("mapLegend").innerHTML=["Late","In progress","Done","Not started","none"].map(k=>`<span><i style="background:${MAPC[k]}"></i>${t(MAPLBL[k])}</span>`).join("")+
+    `<span><i style="background:none;border:0;border-top:2px solid #464F60;height:0;width:18px"></i>${t("mRegLine")}</span>`;
 }
 
 // ---------- context cards ----------
